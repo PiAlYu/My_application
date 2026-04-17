@@ -69,10 +69,10 @@ fun AdminListsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Admin: checklists") },
+                title = { Text("Управление списками") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 actions = {
@@ -80,7 +80,7 @@ fun AdminListsScreen(
                         onClick = viewModel::syncWithServer,
                         enabled = !state.isSyncing,
                     ) {
-                        Icon(Icons.Filled.Sync, contentDescription = "Sync")
+                        Icon(Icons.Filled.Sync, contentDescription = "Синхронизировать")
                     }
                 },
             )
@@ -88,7 +88,7 @@ fun AdminListsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Filled.PlaylistAdd, contentDescription = "Add checklist")
+                Icon(Icons.Filled.PlaylistAdd, contentDescription = "Добавить список")
             }
         },
     ) { padding ->
@@ -101,7 +101,7 @@ fun AdminListsScreen(
         ) {
             item {
                 Text(
-                    text = "Server URL",
+                    text = "Адрес сервера",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -112,7 +112,7 @@ fun AdminListsScreen(
                     onValueChange = { serverUrlDraft = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Example: http://192.168.1.100:8080/api/") },
+                    label = { Text("Например: http://192.168.1.100:8080/api/") },
                 )
             }
             item {
@@ -120,13 +120,13 @@ fun AdminListsScreen(
                     onClick = { viewModel.saveServerBaseUrl(serverUrlDraft) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Save server URL")
+                    Text("Сохранить адрес сервера")
                 }
             }
 
             item {
                 Text(
-                    text = "Select checklist to edit",
+                    text = "Выберите список для редактирования",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -135,7 +135,7 @@ fun AdminListsScreen(
             if (state.checklists.isEmpty()) {
                 item {
                     Text(
-                        text = "No checklists yet. Create one locally or sync from the server.",
+                        text = "Списков пока нет. Создайте локальный список или выполните синхронизацию.",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(vertical = 24.dp),
                     )
@@ -155,13 +155,13 @@ fun AdminListsScreen(
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("New checklist") },
+            title = { Text("Новый список") },
             text = {
                 OutlinedTextField(
                     value = newChecklistTitle,
                     onValueChange = { newChecklistTitle = it },
                     singleLine = true,
-                    label = { Text("Title") },
+                    label = { Text("Название") },
                 )
             },
             confirmButton = {
@@ -171,10 +171,10 @@ fun AdminListsScreen(
                         newChecklistTitle = ""
                         showCreateDialog = false
                     },
-                ) { Text("Create") }
+                ) { Text("Создать") }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateDialog = false }) { Text("Отмена") }
             },
         )
     }
@@ -207,23 +207,23 @@ private fun AdminChecklistCard(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Items: ${checklist.itemCount}",
+                    text = "Товаров: ${checklist.itemCount}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 2.dp),
                 )
                 AssistChip(
                     onClick = {},
                     label = {
-                        Text(if (checklist.isFromServer) "Source: server" else "Source: local")
+                        Text(if (checklist.isFromServer) "Синхронизирован с сервером" else "Только локально")
                     },
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                Icon(Icons.Filled.Delete, contentDescription = "Удалить")
             }
         }
     }

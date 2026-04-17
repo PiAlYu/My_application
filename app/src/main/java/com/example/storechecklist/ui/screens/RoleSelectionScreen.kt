@@ -1,11 +1,15 @@
 package com.example.storechecklist.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Storefront
@@ -20,7 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.storechecklist.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,17 +45,36 @@ fun RoleSelectionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Image(
+                painter = painterResource(R.drawable.ic_brand_robot),
+                contentDescription = "Аватар приложения",
+                modifier = Modifier.size(210.dp),
+                contentScale = ContentScale.Fit,
+            )
+
+            Text(
+                text = "Store Checklist",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Text(
+                text = "Робот-помощник помогает быстро открывать нужный режим и работать со списками без визуальной перегрузки.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 12.dp, bottom = 28.dp),
+            )
+
             Text(
                 text = "Выберите окно работы",
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = "Администратор управляет списками. Пользователь проходит выбранный список.",
+                text = "В режиме управления можно редактировать и синхронизировать списки. В режиме прохождения можно быстро отмечать товары по выбранному списку.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 12.dp, bottom = 28.dp),
             )
@@ -64,7 +90,7 @@ fun RoleSelectionScreen(
                     contentDescription = null,
                 )
                 Text(
-                    text = " Окно администратора",
+                    text = " Управление списками",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -81,7 +107,7 @@ fun RoleSelectionScreen(
                     contentDescription = null,
                 )
                 Text(
-                    text = " Окно пользователя",
+                    text = " Прохождение списка",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }

@@ -2,11 +2,17 @@
   {
     "id": "seed-001",
     "title": "Morning shift",
-    "updatedAt": 1713000000000,
+    "updatedAt": 1776450396022,
     "items": [
-      { "name": "Milk 1L" },
-      { "name": "Bread" },
-      { "name": "Apples" }
+      {
+        "name": "Огурец"
+      },
+      {
+        "name": "Помидор"
+      },
+      {
+        "name": "Картошка"
+      }
     ]
   }
 ]

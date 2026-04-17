@@ -28,7 +28,7 @@ data class ChecklistDetails(
 )
 
 data class SyncReport(
-    val created: Int,
-    val updated: Int,
+    val addedToLocal: Int,
+    val addedToServer: Int,
+    val updatedOnServer: Int,
 )
-

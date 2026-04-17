@@ -7,6 +7,9 @@ import com.example.storechecklist.data.local.ChecklistEntity
 import com.example.storechecklist.data.local.ChecklistItemEntity
 import com.example.storechecklist.data.local.ItemProgressEntity
 import com.example.storechecklist.data.local.ServerConfigStore
+import com.example.storechecklist.data.local.ChecklistWithItems
+import com.example.storechecklist.data.remote.RemoteChecklistDto
+import com.example.storechecklist.data.remote.RemoteChecklistItemDto
 import com.example.storechecklist.data.remote.ServerApiFactory
 import com.example.storechecklist.domain.ChecklistDetails
 import com.example.storechecklist.domain.ChecklistItem
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class ChecklistRepository(
     private val database: AppDatabase,
@@ -141,53 +145,207 @@ class ChecklistRepository(
         checklistDao.clearProgressForChecklist(checklistId)
     }
 
-    suspend fun syncFromServer(): SyncReport = withContext(Dispatchers.IO) {
+    suspend fun syncWithServer(): SyncReport = withContext(Dispatchers.IO) {
         val baseUrl = serverConfigStore.getServerBaseUrl()
         val serverApi = serverApiFactory.create(baseUrl)
         val remoteChecklists = serverApi.getChecklists()
-        var created = 0
-        var updated = 0
+        val localChecklists = checklistDao.getAllChecklistsWithItems()
+        val mergePlan = buildMergePlan(localChecklists, remoteChecklists)
+        val mergedRemoteChecklists = serverApi.replaceChecklists(mergePlan.remoteChecklists)
+        val mergedRemoteById = mergedRemoteChecklists.associateBy { it.id }
+
         database.withTransaction {
-            remoteChecklists.forEach { remote ->
-                val existing = checklistDao.getChecklistByServerId(remote.id)
-                if (existing == null) {
-                    val checklistId = checklistDao.insertChecklist(
-                        ChecklistEntity(
-                            serverId = remote.id,
-                            title = remote.title.trim(),
-                            isFromServer = true,
-                            updatedAt = remote.updatedAt ?: System.currentTimeMillis(),
-                        ),
-                    )
+            mergePlan.localAssignments.forEach { assignment ->
+                val mergedRemote = mergedRemoteById[assignment.serverId] ?: return@forEach
+                val existing = checklistDao.getChecklistById(assignment.localChecklistId) ?: return@forEach
+                val updatedChecklist = existing.copy(
+                    serverId = assignment.serverId,
+                    title = mergedRemote.title.trim(),
+                    isFromServer = true,
+                    updatedAt = mergedRemote.updatedAt ?: existing.updatedAt,
+                )
+                if (updatedChecklist != existing) {
+                    checklistDao.updateChecklist(updatedChecklist)
+                }
+            }
+
+            mergePlan.remoteOnlyServerIds.forEach { serverId ->
+                if (checklistDao.getChecklistByServerId(serverId) != null) return@forEach
+                val remote = mergedRemoteById[serverId] ?: return@forEach
+                val checklistId = checklistDao.insertChecklist(
+                    ChecklistEntity(
+                        serverId = remote.id,
+                        title = remote.title.trim(),
+                        isFromServer = true,
+                        updatedAt = remote.updatedAt ?: System.currentTimeMillis(),
+                    ),
+                )
+                val items = normalizeItemNames(remote.items.map { it.name })
+                if (items.isNotEmpty()) {
                     checklistDao.insertChecklistItems(
-                        remote.items
-                            .map { it.name.trim() }
-                            .filter { it.isNotEmpty() }
-                            .mapIndexed { index, name ->
-                                ChecklistItemEntity(
-                                    checklistId = checklistId,
-                                    name = name,
-                                    position = index,
-                                )
-                            },
+                        items.mapIndexed { index, name ->
+                            ChecklistItemEntity(
+                                checklistId = checklistId,
+                                name = name,
+                                position = index,
+                            )
+                        },
                     )
-                    created += 1
-                } else {
-                    checklistDao.updateChecklist(
-                        existing.copy(
-                            title = remote.title.trim(),
-                            isFromServer = true,
-                            updatedAt = remote.updatedAt ?: System.currentTimeMillis(),
-                        ),
-                    )
-                    checklistDao.replaceChecklistItems(
-                        checklistId = existing.id,
-                        items = remote.items.map { it.name },
-                    )
-                    updated += 1
                 }
             }
         }
-        SyncReport(created = created, updated = updated)
+        mergePlan.report
     }
+
+    private fun buildMergePlan(
+        localChecklists: List<ChecklistWithItems>,
+        remoteChecklists: List<RemoteChecklistDto>,
+    ): MergePlan {
+        val now = System.currentTimeMillis()
+        val remoteById = remoteChecklists.associateBy { it.id }
+        val unmatchedRemoteIds = remoteChecklists.map { it.id }.toMutableSet()
+        val remoteIdsByTitle = remoteChecklists
+            .groupBy { normalizeTitleKey(it.title) }
+            .mapValues { entry -> entry.value.map { it.id }.toMutableList() }
+            .toMutableMap()
+
+        val mergedRemoteChecklists = mutableListOf<RemoteChecklistDto>()
+        val localAssignments = mutableListOf<LocalChecklistAssignment>()
+        val remoteOnlyServerIds = mutableListOf<String>()
+
+        var addedToLocal = 0
+        var addedToServer = 0
+        var updatedOnServer = 0
+
+        localChecklists.forEach { local ->
+            val localTitle = local.checklist.title.trim()
+            if (localTitle.isEmpty()) return@forEach
+
+            val localItems = normalizeItemNames(local.items.map { it.name })
+            val remoteMatchById = local.checklist.serverId
+                ?.takeIf { unmatchedRemoteIds.contains(it) }
+                ?.let(remoteById::get)
+            val remoteMatch = remoteMatchById ?: findRemoteByTitle(
+                titleKey = normalizeTitleKey(localTitle),
+                remoteById = remoteById,
+                remoteIdsByTitle = remoteIdsByTitle,
+                unmatchedRemoteIds = unmatchedRemoteIds,
+            )
+
+            if (remoteMatchById != null) {
+                unmatchedRemoteIds.remove(remoteMatchById.id)
+            }
+
+            val resolvedServerId = when {
+                remoteMatch != null -> remoteMatch.id
+                !local.checklist.serverId.isNullOrBlank() -> local.checklist.serverId
+                else -> UUID.randomUUID().toString()
+            }.orEmpty()
+
+            val remoteNeedsUpdate = remoteMatch?.let {
+                !hasSameChecklistContent(
+                    remoteChecklist = it,
+                    localTitle = localTitle,
+                    localItems = localItems,
+                )
+            } ?: false
+
+            val resolvedUpdatedAt = when {
+                remoteMatch == null -> maxOf(local.checklist.updatedAt, now)
+                remoteNeedsUpdate -> maxOf(now, local.checklist.updatedAt, remoteMatch.updatedAt ?: 0L)
+                else -> maxOf(local.checklist.updatedAt, remoteMatch.updatedAt ?: 0L)
+            }
+
+            mergedRemoteChecklists += RemoteChecklistDto(
+                id = resolvedServerId,
+                title = localTitle,
+                updatedAt = resolvedUpdatedAt,
+                items = localItems.map(::RemoteChecklistItemDto),
+            )
+            localAssignments += LocalChecklistAssignment(
+                localChecklistId = local.checklist.id,
+                serverId = resolvedServerId,
+            )
+
+            when {
+                remoteMatch == null -> addedToServer += 1
+                remoteNeedsUpdate -> updatedOnServer += 1
+            }
+        }
+
+        remoteChecklists.forEach { remote ->
+            if (!unmatchedRemoteIds.remove(remote.id)) return@forEach
+            val normalizedRemote = normalizeRemoteChecklist(remote)
+            mergedRemoteChecklists += normalizedRemote
+            remoteOnlyServerIds += normalizedRemote.id
+            addedToLocal += 1
+        }
+
+        return MergePlan(
+            remoteChecklists = mergedRemoteChecklists,
+            localAssignments = localAssignments,
+            remoteOnlyServerIds = remoteOnlyServerIds,
+            report = SyncReport(
+                addedToLocal = addedToLocal,
+                addedToServer = addedToServer,
+                updatedOnServer = updatedOnServer,
+            ),
+        )
+    }
+
+    private fun findRemoteByTitle(
+        titleKey: String,
+        remoteById: Map<String, RemoteChecklistDto>,
+        remoteIdsByTitle: MutableMap<String, MutableList<String>>,
+        unmatchedRemoteIds: MutableSet<String>,
+    ): RemoteChecklistDto? {
+        val idsForTitle = remoteIdsByTitle[titleKey] ?: return null
+        while (idsForTitle.isNotEmpty()) {
+            val remoteId = idsForTitle.removeAt(0)
+            if (!unmatchedRemoteIds.remove(remoteId)) continue
+            return remoteById[remoteId]
+        }
+        return null
+    }
+
+    private fun hasSameChecklistContent(
+        remoteChecklist: RemoteChecklistDto,
+        localTitle: String,
+        localItems: List<String>,
+    ): Boolean {
+        return remoteChecklist.title.trim() == localTitle &&
+            normalizeItemNames(remoteChecklist.items.map { it.name }) == localItems
+    }
+
+    private fun normalizeRemoteChecklist(remoteChecklist: RemoteChecklistDto): RemoteChecklistDto {
+        val title = remoteChecklist.title.trim()
+        return RemoteChecklistDto(
+            id = remoteChecklist.id,
+            title = title,
+            updatedAt = remoteChecklist.updatedAt ?: System.currentTimeMillis(),
+            items = normalizeItemNames(remoteChecklist.items.map { it.name }).map(::RemoteChecklistItemDto),
+        )
+    }
+
+    private fun normalizeItemNames(rawItems: List<String>): List<String> {
+        return rawItems
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    private fun normalizeTitleKey(rawTitle: String): String {
+        return rawTitle.trim()
+    }
+
+    private data class MergePlan(
+        val remoteChecklists: List<RemoteChecklistDto>,
+        val localAssignments: List<LocalChecklistAssignment>,
+        val remoteOnlyServerIds: List<String>,
+        val report: SyncReport
+    )
+
+    private data class LocalChecklistAssignment(
+        val localChecklistId: Long,
+        val serverId: String
+    )
 }

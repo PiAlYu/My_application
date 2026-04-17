@@ -57,6 +57,10 @@ interface ChecklistDao {
     @Query("SELECT * FROM checklists WHERE serverId = :serverId LIMIT 1")
     suspend fun getChecklistByServerId(serverId: String): ChecklistEntity?
 
+    @Transaction
+    @Query("SELECT * FROM checklists ORDER BY updatedAt DESC, id DESC")
+    suspend fun getAllChecklistsWithItems(): List<ChecklistWithItems>
+
     @Query("UPDATE checklists SET title = :title, updatedAt = :updatedAt WHERE id = :checklistId")
     suspend fun updateChecklistTitle(checklistId: Long, title: String, updatedAt: Long)
 
@@ -98,4 +102,3 @@ interface ChecklistDao {
         insertChecklistItems(entities)
     }
 }
-

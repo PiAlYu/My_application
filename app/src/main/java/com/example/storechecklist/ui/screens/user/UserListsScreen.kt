@@ -66,7 +66,7 @@ fun UserListsScreen(
             if (checklists.isEmpty()) {
                 item {
                     Text(
-                        text = "Списков нет. Дождитесь синхронизации с сервером или добавления администратором.",
+                        text = "Списков нет. Выполните синхронизацию или создайте список в режиме управления.",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(vertical = 24.dp),
                     )
@@ -106,4 +106,3 @@ private fun UserChecklistCard(
         }
     }
 }
-

@@ -59,10 +59,10 @@ class AdminListsViewModel : ViewModel() {
         if (result.isSuccess) {
             val savedUrl = result.getOrNull().orEmpty()
             serverBaseUrl.value = savedUrl
-            syncMessage.value = "Server URL saved: $savedUrl"
+            syncMessage.value = "Адрес сервера сохранён: $savedUrl"
         } else {
-            val reason = result.exceptionOrNull()?.message ?: "Invalid URL format."
-            syncMessage.value = "Server URL was not saved. $reason"
+            val reason = result.exceptionOrNull()?.message ?: "Неверный формат URL."
+            syncMessage.value = "Адрес сервера не сохранён. $reason"
         }
     }
 
@@ -71,10 +71,10 @@ class AdminListsViewModel : ViewModel() {
         viewModelScope.launch {
             syncInProgress.value = true
             syncMessage.value = try {
-                val report = repository.syncFromServer()
-                "Sync completed. New: ${report.created}, updated: ${report.updated}."
+                val report = repository.syncWithServer()
+                "Синхронизация завершена. На устройство: ${report.addedToLocal}, на сервер: ${report.addedToServer}, обновлено на сервере: ${report.updatedOnServer}."
             } catch (error: Exception) {
-                "Server is unavailable. The app continues in offline mode."
+                "Сервер недоступен. Приложение продолжает работать офлайн."
             } finally {
                 syncInProgress.value = false
             }
