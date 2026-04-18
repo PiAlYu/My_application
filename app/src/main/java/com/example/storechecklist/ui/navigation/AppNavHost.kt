@@ -18,6 +18,7 @@ import com.example.storechecklist.ui.viewmodel.UserChecklistViewModel
 private object Routes {
     const val ROLE = "role"
     const val ADMIN_LISTS = "admin_lists"
+    const val SUPERUSER_LISTS = "superuser_lists"
     const val USER_LISTS = "user_lists"
     const val CHECKLIST_ID = "checklistId"
     const val ADMIN_CHECKLIST_TEMPLATE = "admin_checklist/{checklistId}"
@@ -38,12 +39,24 @@ fun AppNavHost() {
         composable(Routes.ROLE) {
             RoleSelectionScreen(
                 onOpenAdmin = { navController.navigate(Routes.ADMIN_LISTS) },
+                onOpenSuperUser = { navController.navigate(Routes.SUPERUSER_LISTS) },
                 onOpenUser = { navController.navigate(Routes.USER_LISTS) },
             )
         }
 
         composable(Routes.ADMIN_LISTS) {
             AdminListsScreen(
+                isSuperUserMode = false,
+                onBack = { navController.popBackStack() },
+                onOpenChecklist = { checklistId ->
+                    navController.navigate(Routes.adminChecklist(checklistId))
+                },
+            )
+        }
+
+        composable(Routes.SUPERUSER_LISTS) {
+            AdminListsScreen(
+                isSuperUserMode = true,
                 onBack = { navController.popBackStack() },
                 onOpenChecklist = { checklistId ->
                     navController.navigate(Routes.adminChecklist(checklistId))

@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import com.example.storechecklist.ui.viewmodel.AdminListsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminListsScreen(
+    isSuperUserMode: Boolean,
     onBack: () -> Unit,
     onOpenChecklist: (Long) -> Unit,
     viewModel: AdminListsViewModel = viewModel(),
@@ -69,7 +71,15 @@ fun AdminListsScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Управление списками") },
+                title = {
+                    Text(
+                        if (isSuperUserMode) {
+                            "Super user: управление"
+                        } else {
+                            "Управление списками"
+                        },
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
@@ -77,7 +87,7 @@ fun AdminListsScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = viewModel::syncWithServer,
+                        onClick = { viewModel.syncWithServer(isSuperUserMode) },
                         enabled = !state.isSyncing,
                     ) {
                         Icon(Icons.Filled.Sync, contentDescription = "Синхронизировать")
@@ -122,6 +132,9 @@ fun AdminListsScreen(
                 ) {
                     Text("Сохранить адрес сервера")
                 }
+            }
+            item {
+                SyncModeBanner(isSuperUserMode = isSuperUserMode)
             }
 
             item {
@@ -181,6 +194,55 @@ fun AdminListsScreen(
 }
 
 @Composable
+private fun SyncModeBanner(
+    isSuperUserMode: Boolean,
+) {
+    val containerColor = if (isSuperUserMode) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = if (isSuperUserMode) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val title = if (isSuperUserMode) {
+        "Режим super user"
+    } else {
+        "Обычный режим подключения"
+    }
+    val body = if (isSuperUserMode) {
+        "Синхронизация полностью заменит базу сервера текущими локальными списками. Если локальная база пуста, сервер тоже станет пустым."
+    } else {
+        "Синхронизация только добавит на устройство списки, которые уже есть на сервере. Локальные списки и удаления не отправляются."
+    }
+
+    Surface(
+        color = containerColor,
+        shape = MaterialTheme.shapes.large,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = contentColor,
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor,
+            )
+        }
+    }
+}
+
+@Composable
 private fun AdminChecklistCard(
     checklist: ChecklistSummary,
     onEdit: () -> Unit,
@@ -214,7 +276,7 @@ private fun AdminChecklistCard(
                 AssistChip(
                     onClick = {},
                     label = {
-                        Text(if (checklist.isFromServer) "Синхронизирован с сервером" else "Только локально")
+                        Text(if (checklist.isFromServer) "Есть на сервере" else "Только локально")
                     },
                     modifier = Modifier.padding(top = 8.dp),
                 )

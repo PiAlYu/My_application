@@ -66,15 +66,24 @@ class AdminListsViewModel : ViewModel() {
         }
     }
 
-    fun syncWithServer() {
+    fun syncWithServer(isSuperUserMode: Boolean) {
         if (syncInProgress.value) return
         viewModelScope.launch {
             syncInProgress.value = true
             syncMessage.value = try {
-                val report = repository.syncWithServer()
-                "Синхронизация завершена. На устройство: ${report.addedToLocal}, на сервер: ${report.addedToServer}, обновлено на сервере: ${report.updatedOnServer}."
+                if (isSuperUserMode) {
+                    val report = repository.replaceServerWithLocal()
+                    "Серверная база полностью заменена локальной. Отправлено списков: ${report.addedToServer}."
+                } else {
+                    val report = repository.importMissingFromServer()
+                    "С сервера добавлено списков: ${report.addedToLocal}. Локальные списки не удалялись."
+                }
             } catch (error: Exception) {
-                "Сервер недоступен. Приложение продолжает работать офлайн."
+                if (isSuperUserMode) {
+                    "Не удалось переписать сервер локальной базой. Проверьте адрес и доступность сервера."
+                } else {
+                    "Сервер недоступен. Локальные списки остаются без изменений."
+                }
             } finally {
                 syncInProgress.value = false
             }

@@ -11,7 +11,7 @@ class ChecklistSyncWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         return try {
-            AppGraph.repository.syncWithServer()
+            AppGraph.repository.importMissingFromServer()
             Result.success()
         } catch (error: Exception) {
             Result.retry()

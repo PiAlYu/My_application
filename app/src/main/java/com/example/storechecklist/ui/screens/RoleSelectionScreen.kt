@@ -13,10 +13,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -33,12 +35,21 @@ import com.example.storechecklist.R
 @Composable
 fun RoleSelectionScreen(
     onOpenAdmin: () -> Unit,
+    onOpenSuperUser: () -> Unit,
     onOpenUser: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Store Checklist") },
+                actions = {
+                    IconButton(onClick = onOpenSuperUser) {
+                        Icon(
+                            imageVector = Icons.Filled.VerifiedUser,
+                            contentDescription = "Super user",
+                        )
+                    }
+                },
             )
         },
     ) { padding ->
@@ -74,7 +85,7 @@ fun RoleSelectionScreen(
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = "В режиме управления можно редактировать и синхронизировать списки. В режиме прохождения можно быстро отмечать товары по выбранному списку.",
+                text = "В режиме управления можно редактировать локальные списки и добавлять в них списки с сервера. Кнопка super user в правом верхнем углу открывает режим, который полностью заменяет серверную базу локальной.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 12.dp, bottom = 28.dp),
             )
