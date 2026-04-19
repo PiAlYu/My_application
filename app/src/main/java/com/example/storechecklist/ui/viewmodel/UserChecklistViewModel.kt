@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.storechecklist.AppGraph
 import com.example.storechecklist.domain.ChecklistItem
 import com.example.storechecklist.domain.UserChecklistMode
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -17,6 +16,9 @@ data class UserChecklistUiState(
     val title: String = "",
     val mode: UserChecklistMode = UserChecklistMode.HIDE_ON_TAP,
     val items: List<ChecklistItem> = emptyList(),
+    val totalItems: Int = 0,
+    val completedItems: Int = 0,
+    val isCompleted: Boolean = false,
     val isLoading: Boolean = true,
     val isNotFound: Boolean = false,
 )
@@ -25,12 +27,13 @@ class UserChecklistViewModel(
     private val checklistId: Long,
 ) : ViewModel() {
     private val repository = AppGraph.repository
-    private val modeFlow = MutableStateFlow(UserChecklistMode.HIDE_ON_TAP)
+    private val settingsStore = AppGraph.appSettingsStore
 
     val uiState: StateFlow<UserChecklistUiState> = combine(
         repository.observeChecklistDetails(checklistId),
-        modeFlow,
-    ) { details, mode ->
+        settingsStore.settings,
+    ) { details, settings ->
+        val mode = settings.checklistMode
         if (details == null) {
             UserChecklistUiState(
                 mode = mode,
@@ -38,16 +41,24 @@ class UserChecklistViewModel(
                 isNotFound = true,
             )
         } else {
+            val completedItems = when (mode) {
+                UserChecklistMode.HIDE_ON_TAP -> details.items.count { it.hiddenInHideMode }
+                UserChecklistMode.MARKER -> details.items.count { it.markedInMarkerMode }
+            }
             val visibleItems = when (mode) {
                 UserChecklistMode.HIDE_ON_TAP -> details.items
                     .filterNot { it.hiddenInHideMode }
                     .sortedBy { it.position }
                 UserChecklistMode.MARKER -> details.items.sortedBy { it.position }
             }
+            val totalItems = details.items.size
             UserChecklistUiState(
                 title = details.title,
                 mode = mode,
                 items = visibleItems,
+                totalItems = totalItems,
+                completedItems = completedItems,
+                isCompleted = totalItems > 0 && completedItems == totalItems,
                 isLoading = false,
                 isNotFound = false,
             )
@@ -58,16 +69,12 @@ class UserChecklistViewModel(
         initialValue = UserChecklistUiState(),
     )
 
-    fun setMode(mode: UserChecklistMode) {
-        modeFlow.value = mode
-    }
-
     fun onItemTapped(itemId: Long) {
         viewModelScope.launch {
             repository.onUserTappedItem(
                 checklistId = checklistId,
                 itemId = itemId,
-                mode = modeFlow.value,
+                mode = settingsStore.settings.value.checklistMode,
             )
         }
     }

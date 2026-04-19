@@ -3,6 +3,7 @@ package com.example.storechecklist
 import android.content.Context
 import androidx.room.Room
 import com.example.storechecklist.data.local.AppDatabase
+import com.example.storechecklist.data.local.AppSettingsStore
 import com.example.storechecklist.data.local.ServerConfigStore
 import com.example.storechecklist.data.remote.ServerApiFactory
 import com.example.storechecklist.data.repository.ChecklistRepository
@@ -17,6 +18,9 @@ object AppGraph {
         private set
 
     lateinit var repository: ChecklistRepository
+        private set
+
+    lateinit var appSettingsStore: AppSettingsStore
         private set
 
     fun init(context: Context) {
@@ -35,6 +39,7 @@ object AppGraph {
         val converterFactory = MoshiConverterFactory.create(moshi)
         val serverApiFactory = ServerApiFactory(converterFactory)
         val serverConfigStore = ServerConfigStore(context.applicationContext)
+        appSettingsStore = AppSettingsStore(context.applicationContext)
         repository = ChecklistRepository(
             database = database,
             checklistDao = database.checklistDao(),
