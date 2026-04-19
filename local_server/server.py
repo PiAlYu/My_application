@@ -1,5 +1,7 @@
 import argparse
 import json
+import os
+import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -70,7 +72,7 @@ class ChecklistRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
         self.end_headers()
         self.wfile.write(body)
 
@@ -85,11 +87,38 @@ class ChecklistRequestHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError as error:
             raise ValueError(f"Invalid JSON: {error.msg}") from error
 
+    def _send_unauthorized(self) -> None:
+        body = json.dumps({"error": "Unauthorized"}, ensure_ascii=False).encode("utf-8")
+        self.send_response(401)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.send_header("WWW-Authenticate", 'Bearer realm="store-checklist"')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _extract_bearer_token(self) -> str:
+        header = self.headers.get("Authorization", "")
+        scheme, _, token = header.partition(" ")
+        if scheme.lower() != "bearer":
+            return ""
+        return token.strip()
+
+    def _is_authorized(self, required_token: str) -> bool:
+        if not required_token:
+            return True
+        provided_token = self._extract_bearer_token()
+        if not provided_token:
+            return False
+        return secrets.compare_digest(provided_token, required_token)
+
     def do_OPTIONS(self) -> None:
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -100,6 +129,10 @@ class ChecklistRequestHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/checklists":
+            if not self._is_authorized(self.server.read_token):
+                self._send_unauthorized()
+                return
+
             data_file: Path = self.server.data_file
             try:
                 checklists = load_checklists(data_file)
@@ -115,6 +148,10 @@ class ChecklistRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path != "/api/checklists":
             self._send_json(404, {"error": "Not found"})
+            return
+
+        if not self._is_authorized(self.server.write_token):
+            self._send_unauthorized()
             return
 
         data_file: Path = self.server.data_file
@@ -136,19 +173,58 @@ class ChecklistRequestHandler(BaseHTTPRequestHandler):
 
 
 class ChecklistServer(ThreadingHTTPServer):
-    def __init__(self, server_address: tuple[str, int], data_file: Path):
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        data_file: Path,
+        read_token: str,
+        write_token: str,
+    ):
         super().__init__(server_address, ChecklistRequestHandler)
         self.data_file = data_file
+        self.read_token = read_token.strip()
+        self.write_token = write_token.strip()
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Local checklist server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind")
-    parser.add_argument("--port", default=8080, type=int, help="Port to bind")
+    parser = argparse.ArgumentParser(description="Checklist server")
+    parser.add_argument(
+        "--host",
+        default=os.getenv("CHECKLIST_SERVER_HOST", "0.0.0.0"),
+        help="Host to bind",
+    )
+    parser.add_argument(
+        "--port",
+        default=int(os.getenv("CHECKLIST_SERVER_PORT", os.getenv("PORT", "8080"))),
+        type=int,
+        help="Port to bind",
+    )
     parser.add_argument(
         "--data-file",
-        default=str(Path(__file__).with_name("data") / "checklists.json"),
+        default=os.getenv(
+            "CHECKLIST_SERVER_DATA_FILE",
+            str(Path(__file__).with_name("data") / "checklists.json"),
+        ),
         help="Path to checklists JSON file",
+    )
+    parser.add_argument(
+        "--read-token",
+        default=os.getenv(
+            "CHECKLIST_SERVER_READ_TOKEN",
+            os.getenv("CHECKLIST_SERVER_AUTH_TOKEN", ""),
+        ),
+        help="Bearer token required for GET /api/checklists",
+    )
+    parser.add_argument(
+        "--write-token",
+        default=os.getenv(
+            "CHECKLIST_SERVER_WRITE_TOKEN",
+            os.getenv(
+                "CHECKLIST_SERVER_AUTH_TOKEN",
+                os.getenv("CHECKLIST_SERVER_READ_TOKEN", ""),
+            ),
+        ),
+        help="Bearer token required for PUT /api/checklists",
     )
     return parser.parse_args()
 
@@ -156,10 +232,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     data_file = Path(args.data_file).resolve()
-    server = ChecklistServer((args.host, args.port), data_file)
-    print("Local checklist server started.")
+    server = ChecklistServer(
+        (args.host, args.port),
+        data_file,
+        read_token=args.read_token,
+        write_token=args.write_token,
+    )
+    print("Checklist server started.")
     print(f"Listening on: http://{args.host}:{args.port}")
     print(f"Data file: {data_file}")
+    print(f"Read token: {'enabled' if server.read_token else 'disabled'}")
+    print(f"Write token: {'enabled' if server.write_token else 'disabled'}")
     print("Endpoints:")
     print("  GET /health")
     print("  GET /api/checklists")

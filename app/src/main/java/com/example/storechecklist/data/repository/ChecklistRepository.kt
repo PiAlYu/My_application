@@ -14,6 +14,7 @@ import com.example.storechecklist.data.remote.ServerApiFactory
 import com.example.storechecklist.domain.ChecklistDetails
 import com.example.storechecklist.domain.ChecklistItem
 import com.example.storechecklist.domain.ChecklistSummary
+import com.example.storechecklist.domain.ServerConnectionSettings
 import com.example.storechecklist.domain.SyncReport
 import com.example.storechecklist.domain.UserChecklistMode
 import java.util.UUID
@@ -29,13 +30,17 @@ class ChecklistRepository(
     private val serverApiFactory: ServerApiFactory,
     private val serverConfigStore: ServerConfigStore,
 ) {
-    fun getServerBaseUrl(): String {
-        return serverConfigStore.getServerBaseUrl()
+    fun getServerConnectionSettings(): ServerConnectionSettings {
+        return serverConfigStore.getSettings()
     }
 
-    fun saveServerBaseUrl(rawUrl: String): Result<String> {
+    fun saveServerConnectionSettings(
+        rawUrl: String,
+        rawReadToken: String,
+        rawWriteToken: String,
+    ): Result<ServerConnectionSettings> {
         return try {
-            Result.success(serverConfigStore.saveServerBaseUrl(rawUrl))
+            Result.success(serverConfigStore.saveSettings(rawUrl, rawReadToken, rawWriteToken))
         } catch (error: IllegalArgumentException) {
             Result.failure(error)
         }
@@ -146,7 +151,11 @@ class ChecklistRepository(
     }
 
     suspend fun importMissingFromServer(): SyncReport = withContext(Dispatchers.IO) {
-        val serverApi = serverApiFactory.create(serverConfigStore.getServerBaseUrl())
+        val serverSettings = serverConfigStore.getSettings()
+        val serverApi = serverApiFactory.create(
+            baseUrl = serverSettings.baseUrl,
+            authToken = serverSettings.readToken,
+        )
         val remoteChecklists = serverApi.getChecklists().map(::normalizeRemoteChecklist)
         val localChecklists = checklistDao.getAllChecklistsWithItems()
         val knownServerIds = localChecklists.mapNotNull { it.checklist.serverId }.toMutableSet()
@@ -191,7 +200,11 @@ class ChecklistRepository(
     }
 
     suspend fun replaceServerWithLocal(): SyncReport = withContext(Dispatchers.IO) {
-        val serverApi = serverApiFactory.create(serverConfigStore.getServerBaseUrl())
+        val serverSettings = serverConfigStore.getSettings()
+        val serverApi = serverApiFactory.create(
+            baseUrl = serverSettings.baseUrl,
+            authToken = serverSettings.resolveWriteToken(),
+        )
         val localChecklists = checklistDao.getAllChecklistsWithItems()
         val now = System.currentTimeMillis()
 

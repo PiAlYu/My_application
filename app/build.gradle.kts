@@ -4,6 +4,17 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+fun String.asBuildConfigString(): String {
+    return "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
+val defaultServerBaseUrl = providers.gradleProperty("storeChecklistServerBaseUrl")
+    .orElse("https://example.com/api/")
+val defaultServerReadToken = providers.gradleProperty("storeChecklistServerReadToken")
+    .orElse("")
+val defaultServerWriteToken = providers.gradleProperty("storeChecklistServerWriteToken")
+    .orElse("")
+
 android {
     namespace = "com.example.storechecklist"
     compileSdk = 35
@@ -16,7 +27,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "SERVER_BASE_URL", "\"https://example.com/api/\"")
+        buildConfigField("String", "SERVER_BASE_URL", defaultServerBaseUrl.get().asBuildConfigString())
+        buildConfigField("String", "SERVER_READ_TOKEN", defaultServerReadToken.get().asBuildConfigString())
+        buildConfigField("String", "SERVER_WRITE_TOKEN", defaultServerWriteToken.get().asBuildConfigString())
     }
 
     buildTypes {
@@ -82,6 +95,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

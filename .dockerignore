@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!local_server/
+!local_server/**
+local_server/__pycache__/
+local_server/data/

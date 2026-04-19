@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,6 +61,8 @@ fun AdminListsScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var newChecklistTitle by remember { mutableStateOf("") }
     var serverUrlDraft by remember(state.serverBaseUrl) { mutableStateOf(state.serverBaseUrl) }
+    var readTokenDraft by remember(state.serverReadToken) { mutableStateOf(state.serverReadToken) }
+    var writeTokenDraft by remember(state.serverWriteToken) { mutableStateOf(state.serverWriteToken) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.syncMessage) {
@@ -111,7 +114,7 @@ fun AdminListsScreen(
         ) {
             item {
                 Text(
-                    text = "Адрес сервера",
+                    text = "Подключение к серверу",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -122,15 +125,52 @@ fun AdminListsScreen(
                     onValueChange = { serverUrlDraft = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Например: http://192.168.1.100:8080/api/") },
+                    label = { Text("Например: https://checklists.example.ru/api/") },
+                    supportingText = {
+                        Text("Для внешнего сервера используйте HTTPS. HTTP оставлен только для localhost и локальной сети.")
+                    },
                 )
             }
             item {
+                OutlinedTextField(
+                    value = readTokenDraft,
+                    onValueChange = { readTokenDraft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Read token, если сервер его требует") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    supportingText = {
+                        Text("Это токен для чтения списков. Если публичное чтение разрешено, поле можно оставить пустым.")
+                    },
+                )
+            }
+            if (isSuperUserMode) {
+                item {
+                    OutlinedTextField(
+                        value = writeTokenDraft,
+                        onValueChange = { writeTokenDraft = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Write token для режима super user") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        supportingText = {
+                            Text("Нужен только устройствам, которые могут полностью переписывать серверную базу.")
+                        },
+                    )
+                }
+            }
+            item {
                 Button(
-                    onClick = { viewModel.saveServerBaseUrl(serverUrlDraft) },
+                    onClick = {
+                        viewModel.saveServerConnection(
+                            rawUrl = serverUrlDraft,
+                            rawReadToken = readTokenDraft,
+                            rawWriteToken = writeTokenDraft,
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Сохранить адрес сервера")
+                    Text("Сохранить подключение")
                 }
             }
             item {
