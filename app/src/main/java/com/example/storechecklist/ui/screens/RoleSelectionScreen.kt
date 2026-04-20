@@ -28,9 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,13 +61,30 @@ fun RoleSelectionScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
+    var serverUrlDraft by rememberSaveable(state.serverBaseUrl) { mutableStateOf(state.serverBaseUrl) }
+    var readTokenDraft by rememberSaveable(state.serverReadToken) { mutableStateOf(state.serverReadToken) }
+    var writeTokenDraft by rememberSaveable(state.serverWriteToken) { mutableStateOf(state.serverWriteToken) }
 
     if (isSettingsOpen) {
         MainSettingsSheet(
             selectedThemeMode = state.themeMode,
             selectedChecklistMode = state.checklistMode,
+            serverUrl = serverUrlDraft,
+            readToken = readTokenDraft,
+            writeToken = writeTokenDraft,
+            connectionMessage = state.connectionMessage,
             onThemeSelected = viewModel::setThemeMode,
             onChecklistModeSelected = viewModel::setChecklistMode,
+            onServerUrlChange = { serverUrlDraft = it },
+            onReadTokenChange = { readTokenDraft = it },
+            onWriteTokenChange = { writeTokenDraft = it },
+            onSaveServerConnection = {
+                viewModel.saveServerConnection(
+                    rawUrl = serverUrlDraft,
+                    rawReadToken = readTokenDraft,
+                    rawWriteToken = writeTokenDraft,
+                )
+            },
             onDismiss = { isSettingsOpen = false },
         )
     }
@@ -121,15 +139,10 @@ fun RoleSelectionScreen(
                 modifier = Modifier.padding(top = 12.dp),
             )
 
-            SettingsSnapshotCard(
-                themeMode = state.themeMode,
-                checklistMode = state.checklistMode,
-                modifier = Modifier.padding(top = 18.dp, bottom = 28.dp),
-            )
-
             Text(
                 text = "Выберите окно работы",
                 style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 30.dp),
             )
             Text(
                 text = "В режиме управления можно редактировать локальные списки и добавлять в них списки с сервера. Кнопка super user в правом верхнем углу открывает режим, который полностью заменяет серверную базу локальной.",
@@ -173,55 +186,28 @@ fun RoleSelectionScreen(
     }
 }
 
-@Composable
-private fun SettingsSnapshotCard(
-    themeMode: AppThemeMode,
-    checklistMode: UserChecklistMode,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        tonalElevation = 2.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = "Быстрые настройки",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(
-                text = "Тема: ${themeMode.label()}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(
-                text = "Режим прохождения: ${checklistMode.title()}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainSettingsSheet(
     selectedThemeMode: AppThemeMode,
     selectedChecklistMode: UserChecklistMode,
+    serverUrl: String,
+    readToken: String,
+    writeToken: String,
+    connectionMessage: String?,
     onThemeSelected: (AppThemeMode) -> Unit,
     onChecklistModeSelected: (UserChecklistMode) -> Unit,
+    onServerUrlChange: (String) -> Unit,
+    onReadTokenChange: (String) -> Unit,
+    onWriteTokenChange: (String) -> Unit,
+    onSaveServerConnection: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -296,6 +282,60 @@ private fun MainSettingsSheet(
                 )
             }
 
+            HorizontalDivider()
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Подключение к серверу",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Эти параметры используются для обновления списков и super user синхронизации.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = serverUrl,
+                    onValueChange = onServerUrlChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Server URL") },
+                    supportingText = { Text("Например: https://store-checklist-api.onrender.com/api/") },
+                )
+                OutlinedTextField(
+                    value = readToken,
+                    onValueChange = onReadTokenChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Read token") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    supportingText = { Text("Нужен для загрузки списков с сервера.") },
+                )
+                OutlinedTextField(
+                    value = writeToken,
+                    onValueChange = onWriteTokenChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Write token") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    supportingText = { Text("Нужен только для режима super user.") },
+                )
+                Button(
+                    onClick = onSaveServerConnection,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Сохранить подключение")
+                }
+                connectionMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             Text(
                 text = "Настройки применяются сразу и сохраняются для следующих запусков приложения.",
                 style = MaterialTheme.typography.bodySmall,
@@ -342,14 +382,6 @@ private fun SettingsChoiceCard(
                 )
             }
         }
-    }
-}
-
-private fun AppThemeMode.label(): String {
-    return when (this) {
-        AppThemeMode.SYSTEM -> "Как в системе"
-        AppThemeMode.LIGHT -> "Светлая"
-        AppThemeMode.DARK -> "Тёмная"
     }
 }
 

@@ -134,13 +134,10 @@ fun UserChecklistScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         item {
-                            ChecklistModeCard(
-                                mode = state.mode,
+                            Button(
+                                onClick = viewModel::resetProgress,
                                 modifier = Modifier.padding(top = 12.dp),
-                            )
-                        }
-                        item {
-                            Button(onClick = viewModel::resetProgress) {
+                            ) {
                                 Text("Сбросить прогресс списка")
                             }
                         }
@@ -191,50 +188,6 @@ fun UserChecklistScreen(
             trigger = celebrationTrigger,
             modifier = Modifier.fillMaxSize(),
         )
-    }
-}
-
-@Composable
-private fun ChecklistModeCard(
-    mode: UserChecklistMode,
-    modifier: Modifier = Modifier,
-) {
-    val modeTitle = when (mode) {
-        UserChecklistMode.HIDE_ON_TAP -> "Скрывать при нажатии"
-        UserChecklistMode.MARKER -> "Маркер рядом"
-    }
-    val helperText = when (mode) {
-        UserChecklistMode.HIDE_ON_TAP -> "Выбранный товар исчезает из списка, чтобы внимание оставалось только на оставшихся позициях."
-        UserChecklistMode.MARKER -> "Выбранный товар остаётся на месте и получает отметку, чтобы было удобно сверять весь список целиком."
-    }
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        tonalElevation = 2.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = "Режим прохождения",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-            Text(
-                text = modeTitle,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-            Text(
-                text = "$helperText Изменить режим можно в настройках на главном экране.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
-            )
-        }
     }
 }
 

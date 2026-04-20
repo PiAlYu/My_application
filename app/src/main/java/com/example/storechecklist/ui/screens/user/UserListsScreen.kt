@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,9 +18,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +39,14 @@ fun UserListsScreen(
     onOpenChecklist: (Long) -> Unit,
     viewModel: UserListsViewModel = viewModel(),
 ) {
-    val checklists by viewModel.checklists.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.syncMessage) {
+        val message = state.syncMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeSyncMessage()
+    }
 
     Scaffold(
         topBar = {
@@ -45,8 +57,17 @@ fun UserListsScreen(
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
+                actions = {
+                    IconButton(
+                        onClick = viewModel::syncWithServer,
+                        enabled = !state.isSyncing,
+                    ) {
+                        Icon(Icons.Filled.Sync, contentDescription = "Обновить списки")
+                    }
+                },
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -63,7 +84,7 @@ fun UserListsScreen(
                 )
             }
 
-            if (checklists.isEmpty()) {
+            if (state.checklists.isEmpty()) {
                 item {
                     Text(
                         text = "Списков нет. Выполните синхронизацию или создайте список в режиме управления.",
@@ -72,7 +93,7 @@ fun UserListsScreen(
                     )
                 }
             } else {
-                items(checklists, key = { it.id }) { checklist ->
+                items(state.checklists, key = { it.id }) { checklist ->
                     UserChecklistCard(
                         checklist = checklist,
                         onClick = { onOpenChecklist(checklist.id) },

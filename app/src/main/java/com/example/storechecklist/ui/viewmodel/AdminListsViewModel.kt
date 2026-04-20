@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.storechecklist.AppGraph
 import com.example.storechecklist.domain.ChecklistSummary
-import com.example.storechecklist.domain.ServerConnectionSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,35 +15,27 @@ data class AdminListsUiState(
     val checklists: List<ChecklistSummary> = emptyList(),
     val isSyncing: Boolean = false,
     val syncMessage: String? = null,
-    val serverBaseUrl: String = "",
-    val serverReadToken: String = "",
-    val serverWriteToken: String = "",
 )
 
 class AdminListsViewModel : ViewModel() {
     private val repository = AppGraph.repository
     private val syncInProgress = MutableStateFlow(false)
     private val syncMessage = MutableStateFlow<String?>(null)
-    private val serverConnectionSettings = MutableStateFlow(repository.getServerConnectionSettings())
 
     val uiState: StateFlow<AdminListsUiState> = combine(
         repository.observeChecklistSummaries(),
         syncInProgress,
         syncMessage,
-        serverConnectionSettings,
-    ) { checklists, isSyncing, message, settings ->
+    ) { checklists, isSyncing, message ->
         AdminListsUiState(
             checklists = checklists,
             isSyncing = isSyncing,
             syncMessage = message,
-            serverBaseUrl = settings.baseUrl,
-            serverReadToken = settings.readToken,
-            serverWriteToken = settings.writeToken,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = repository.getServerConnectionSettings().toInitialUiState(),
+        initialValue = AdminListsUiState(),
     )
 
     fun createChecklist(title: String) {
@@ -56,26 +47,6 @@ class AdminListsViewModel : ViewModel() {
     fun deleteChecklist(checklistId: Long) {
         viewModelScope.launch {
             repository.deleteChecklist(checklistId)
-        }
-    }
-
-    fun saveServerConnection(
-        rawUrl: String,
-        rawReadToken: String,
-        rawWriteToken: String,
-    ) {
-        val result = repository.saveServerConnectionSettings(
-            rawUrl = rawUrl,
-            rawReadToken = rawReadToken,
-            rawWriteToken = rawWriteToken,
-        )
-        if (result.isSuccess) {
-            val savedSettings = result.getOrNull() ?: return
-            serverConnectionSettings.value = savedSettings
-            syncMessage.value = "Настройки подключения сохранены."
-        } else {
-            val reason = result.exceptionOrNull()?.message ?: "Неверный формат URL."
-            syncMessage.value = "Настройки подключения не сохранены. $reason"
         }
     }
 
@@ -109,13 +80,5 @@ class AdminListsViewModel : ViewModel() {
 
     fun consumeSyncMessage() {
         syncMessage.value = null
-    }
-
-    private fun ServerConnectionSettings.toInitialUiState(): AdminListsUiState {
-        return AdminListsUiState(
-            serverBaseUrl = baseUrl,
-            serverReadToken = readToken,
-            serverWriteToken = writeToken,
-        )
     }
 }
