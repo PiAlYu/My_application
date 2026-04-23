@@ -197,7 +197,11 @@ private fun ChecklistCompletionCard(totalItems: Int) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 3.dp,
+        tonalElevation = 2.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -338,7 +342,11 @@ private fun ChecklistSectionHeader(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
-        tonalElevation = 2.dp,
+        tonalElevation = 1.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f),
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -349,7 +357,7 @@ private fun ChecklistSectionHeader(
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.08f),
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.12f),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Storefront,
@@ -375,7 +383,7 @@ private fun ChecklistSectionHeader(
 
             Surface(
                 shape = RoundedCornerShape(999.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
             ) {
                 Text(
                     text = badgeText,

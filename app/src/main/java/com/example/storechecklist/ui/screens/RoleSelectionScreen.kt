@@ -1,5 +1,6 @@
 package com.example.storechecklist.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,15 +27,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +55,7 @@ import com.example.storechecklist.R
 import com.example.storechecklist.domain.AppThemeMode
 import com.example.storechecklist.domain.UserChecklistMode
 import com.example.storechecklist.ui.viewmodel.RoleSelectionViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,10 +66,31 @@ fun RoleSelectionScreen(
     viewModel: RoleSelectionViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
+    var isSettingsOpen by remember { mutableStateOf(false) }
+    val settingsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
     var serverUrlDraft by rememberSaveable(state.serverBaseUrl) { mutableStateOf(state.serverBaseUrl) }
     var readTokenDraft by rememberSaveable(state.serverReadToken) { mutableStateOf(state.serverReadToken) }
     var writeTokenDraft by rememberSaveable(state.serverWriteToken) { mutableStateOf(state.serverWriteToken) }
+
+    val dismissSettingsSheet: () -> Unit = {
+        coroutineScope.launch {
+            settingsSheetState.hide()
+            if (!settingsSheetState.isVisible) {
+                isSettingsOpen = false
+            }
+        }
+    }
+
+    LaunchedEffect(isSettingsOpen) {
+        if (isSettingsOpen && !settingsSheetState.isVisible) {
+            settingsSheetState.show()
+        }
+    }
+
+    BackHandler(enabled = isSettingsOpen) {
+        dismissSettingsSheet()
+    }
 
     if (isSettingsOpen) {
         MainSettingsSheet(
@@ -85,7 +112,8 @@ fun RoleSelectionScreen(
                     rawWriteToken = writeTokenDraft,
                 )
             },
-            onDismiss = { isSettingsOpen = false },
+            sheetState = settingsSheetState,
+            onDismiss = dismissSettingsSheet,
         )
     }
 
@@ -94,7 +122,13 @@ fun RoleSelectionScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Store Checklist") },
                 navigationIcon = {
-                    IconButton(onClick = { isSettingsOpen = true }) {
+                    IconButton(
+                        onClick = {
+                            if (!isSettingsOpen) {
+                                isSettingsOpen = true
+                            }
+                        },
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = "Настройки",
@@ -166,7 +200,7 @@ fun RoleSelectionScreen(
                 )
             }
 
-            OutlinedButton(
+            Button(
                 onClick = onOpenUser,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,9 +235,13 @@ private fun MainSettingsSheet(
     onReadTokenChange: (String) -> Unit,
     onWriteTokenChange: (String) -> Unit,
     onSaveServerConnection: () -> Unit,
+    sheetState: SheetState,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

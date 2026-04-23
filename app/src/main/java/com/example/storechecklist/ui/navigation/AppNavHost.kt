@@ -2,6 +2,7 @@ package com.example.storechecklist.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,18 +39,18 @@ fun AppNavHost() {
     ) {
         composable(Routes.ROLE) {
             RoleSelectionScreen(
-                onOpenAdmin = { navController.navigate(Routes.ADMIN_LISTS) },
-                onOpenSuperUser = { navController.navigate(Routes.SUPERUSER_LISTS) },
-                onOpenUser = { navController.navigate(Routes.USER_LISTS) },
+                onOpenAdmin = { navController.navigateSingleTop(Routes.ADMIN_LISTS) },
+                onOpenSuperUser = { navController.navigateSingleTop(Routes.SUPERUSER_LISTS) },
+                onOpenUser = { navController.navigateSingleTop(Routes.USER_LISTS) },
             )
         }
 
         composable(Routes.ADMIN_LISTS) {
             AdminListsScreen(
                 isSuperUserMode = false,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.navigateToRole() },
                 onOpenChecklist = { checklistId ->
-                    navController.navigate(Routes.adminChecklist(checklistId))
+                    navController.navigateSingleTop(Routes.adminChecklist(checklistId))
                 },
             )
         }
@@ -57,9 +58,9 @@ fun AppNavHost() {
         composable(Routes.SUPERUSER_LISTS) {
             AdminListsScreen(
                 isSuperUserMode = true,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.navigateToRole() },
                 onOpenChecklist = { checklistId ->
-                    navController.navigate(Routes.adminChecklist(checklistId))
+                    navController.navigateSingleTop(Routes.adminChecklist(checklistId))
                 },
             )
         }
@@ -80,9 +81,9 @@ fun AppNavHost() {
 
         composable(Routes.USER_LISTS) {
             UserListsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = { navController.navigateToRole() },
                 onOpenChecklist = { checklistId ->
-                    navController.navigate(Routes.userChecklist(checklistId))
+                    navController.navigateSingleTop(Routes.userChecklist(checklistId))
                 },
             )
         }
@@ -100,5 +101,20 @@ fun AppNavHost() {
                 onBack = { navController.popBackStack() },
             )
         }
+    }
+}
+
+private fun NavHostController.navigateSingleTop(route: String) {
+    navigate(route) {
+        launchSingleTop = true
+    }
+}
+
+private fun NavHostController.navigateToRole() {
+    navigate(Routes.ROLE) {
+        popUpTo(Routes.ROLE) {
+            inclusive = false
+        }
+        launchSingleTop = true
     }
 }
