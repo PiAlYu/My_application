@@ -1,0 +1,25 @@
+{
+  "name": "Store Checklist",
+  "short_name": "Checklist",
+  "description": "Управление и прохождение товарных списков с локальной историей и синхронизацией.",
+  "start_url": "./#/role",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2e4f67",
+  "background_color": "#efe6d8",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

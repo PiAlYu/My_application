@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2e4f67">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Store Checklist">
+  <title>Store Checklist PWA</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="screen-role" class="screen">
+      <header class="topbar">
+        <button id="roleOpenSettingsBtn" class="icon-btn" type="button" aria-label="Настройки">&#9881;</button>
+        <h1 class="topbar-title">Store Checklist</h1>
+        <button id="roleOpenSuperUserBtn" class="icon-btn icon-btn-accent" type="button" aria-label="Super user">&#9733;</button>
+      </header>
+      <main class="screen-body screen-body-centered">
+        <div class="hero-card">
+          <h2>Store Checklist</h2>
+          <p>Локальные списки, синхронизация с сервером и режим прохождения для сотрудников.</p>
+          <div class="role-actions">
+            <button id="roleOpenAdminBtn" class="primary-btn" type="button">Управление списками</button>
+            <button id="roleOpenUserBtn" class="secondary-btn" type="button">Прохождение списка</button>
+          </div>
+          <p class="hint-text">
+            Для установки на iPhone откройте сайт в Safari, нажмите «Поделиться»,
+            затем «Добавить на экран Домой».
+          </p>
+        </div>
+      </main>
+    </section>
+
+    <section id="screen-admin-lists" class="screen hidden">
+      <header class="topbar">
+        <button id="adminListsBackBtn" class="icon-btn" type="button" aria-label="Назад">&larr;</button>
+        <h1 id="adminListsTitle" class="topbar-title">Управление списками</h1>
+        <button id="adminSyncBtn" class="icon-btn" type="button" aria-label="Синхронизация">&#10227;</button>
+      </header>
+      <main class="screen-body">
+        <div class="banner" id="adminModeBanner">
+          <h2 id="adminModeBannerTitle"></h2>
+          <p id="adminModeBannerBody"></p>
+        </div>
+
+        <form id="adminCreateForm" class="inline-form">
+          <input id="adminCreateTitle" type="text" placeholder="Название нового списка" autocomplete="off">
+          <button id="adminCreateBtn" class="primary-btn" type="submit">Создать</button>
+        </form>
+
+        <div id="adminListsEmpty" class="empty-state hidden">Списков пока нет.</div>
+        <div id="adminListsContainer" class="cards"></div>
+      </main>
+    </section>
+
+    <section id="screen-admin-checklist" class="screen hidden">
+      <header class="topbar">
+        <button id="adminChecklistBackBtn" class="icon-btn" type="button" aria-label="Назад">&larr;</button>
+        <h1 class="topbar-title">Изменение списка</h1>
+        <div class="topbar-space"></div>
+      </header>
+      <main class="screen-body">
+        <div id="adminChecklistMissing" class="empty-state hidden">Список не найден.</div>
+
+        <div id="adminChecklistContent">
+          <section class="block">
+            <h2>Название списка</h2>
+            <div class="inline-form">
+              <input id="adminChecklistTitleInput" type="text" autocomplete="off">
+              <button id="adminChecklistSaveTitleBtn" class="secondary-btn" type="button">Сохранить</button>
+            </div>
+          </section>
+
+          <section class="block">
+            <h2>Добавить один товар</h2>
+            <div class="inline-form">
+              <input id="adminChecklistSingleInput" type="text" placeholder="Название товара" autocomplete="off">
+              <button id="adminChecklistAddSingleBtn" class="secondary-btn" type="button">Добавить</button>
+            </div>
+          </section>
+
+          <section class="block">
+            <h2>Добавить несколько товаров</h2>
+            <textarea id="adminChecklistBatchInput" rows="5" placeholder="Каждый товар с новой строки"></textarea>
+            <button id="adminChecklistAddBatchBtn" class="secondary-btn block-btn" type="button">Добавить список товаров</button>
+          </section>
+
+          <section class="block">
+            <h2>Удаление товаров</h2>
+            <div id="adminChecklistItemsEmpty" class="empty-state hidden">В этом списке пока нет товаров.</div>
+            <div id="adminChecklistItemsContainer" class="rows"></div>
+            <button id="adminChecklistDeleteSelectedBtn" class="danger-btn block-btn" type="button" disabled>Удалить выбранные</button>
+          </section>
+        </div>
+      </main>
+    </section>
+
+    <section id="screen-user-lists" class="screen hidden">
+      <header class="topbar">
+        <button id="userListsBackBtn" class="icon-btn" type="button" aria-label="Назад">&larr;</button>
+        <h1 class="topbar-title">Пользователь: списки</h1>
+        <button id="userSyncBtn" class="icon-btn" type="button" aria-label="Синхронизация">&#10227;</button>
+      </header>
+      <main class="screen-body">
+        <div id="userListsEmpty" class="empty-state hidden">Списков пока нет.</div>
+        <div id="userListsContainer" class="cards"></div>
+      </main>
+    </section>
+
+    <section id="screen-user-checklist" class="screen hidden">
+      <header class="topbar">
+        <button id="userChecklistBackBtn" class="icon-btn" type="button" aria-label="Назад">&larr;</button>
+        <h1 id="userChecklistTitle" class="topbar-title">Список</h1>
+        <div class="topbar-space"></div>
+      </header>
+      <main class="screen-body">
+        <div id="userChecklistMissing" class="empty-state hidden">Список не найден.</div>
+
+        <div id="userChecklistContent">
+          <button id="userChecklistResetBtn" class="secondary-btn block-btn" type="button">Сбросить прогресс</button>
+
+          <div id="userChecklistCompletionCard" class="completion-card hidden">
+            <h2>Список завершен</h2>
+            <p id="userChecklistCompletionText"></p>
+          </div>
+
+          <div class="progress-card">
+            <div>
+              <h2>Товары</h2>
+              <p id="userChecklistHelperText"></p>
+            </div>
+            <span id="userChecklistBadge" class="badge"></span>
+          </div>
+
+          <div id="userChecklistItemsEmpty" class="empty-state hidden"></div>
+          <div id="userChecklistItemsContainer" class="rows"></div>
+        </div>
+      </main>
+      <div id="userCelebrationOverlay" class="celebration-overlay hidden" aria-hidden="true"></div>
+    </section>
+  </div>
+
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Настройки</h2>
+        <button id="settingsCloseBtn" class="icon-btn" type="button" aria-label="Закрыть">&#10005;</button>
+      </div>
+
+      <section class="block">
+        <h3>Тема</h3>
+        <label class="choice">
+          <input id="settingsThemeSystem" type="radio" name="themeMode" value="SYSTEM">
+          <span>Как в системе</span>
+        </label>
+        <label class="choice">
+          <input id="settingsThemeLight" type="radio" name="themeMode" value="LIGHT">
+          <span>Светлая</span>
+        </label>
+        <label class="choice">
+          <input id="settingsThemeDark" type="radio" name="themeMode" value="DARK">
+          <span>Темная</span>
+        </label>
+      </section>
+
+      <section class="block">
+        <h3>Режим прохождения</h3>
+        <label class="choice">
+          <input id="settingsModeHide" type="radio" name="checklistMode" value="HIDE_ON_TAP">
+          <span>Скрывать при нажатии</span>
+        </label>
+        <label class="choice">
+          <input id="settingsModeMarker" type="radio" name="checklistMode" value="MARKER">
+          <span>Маркер рядом</span>
+        </label>
+      </section>
+
+      <section class="block">
+        <h3>Подключение к серверу</h3>
+        <label class="field">
+          <span>Server URL</span>
+          <input id="settingsServerUrl" type="text" autocomplete="off" placeholder="https://checklists.example.ru/api/">
+        </label>
+        <label class="field">
+          <span>Read token</span>
+          <input id="settingsReadToken" type="password" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Write token</span>
+          <input id="settingsWriteToken" type="password" autocomplete="off">
+        </label>
+        <button id="settingsSaveConnectionBtn" class="primary-btn block-btn" type="button">Сохранить подключение</button>
+        <p id="settingsConnectionMessage" class="hint-text"></p>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
