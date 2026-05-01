@@ -3,6 +3,8 @@
 
   const STORAGE_KEY = "store_checklist_pwa_state_v1";
   const TOAST_DURATION_MS = 5200;
+  const DEFAULT_SERVER_BASE_URL = "https://store-checklist-api.onrender.com/api/";
+  const LEGACY_SERVER_BASE_URL = "https://example.com/api/";
 
   const THEME_MODES = {
     SYSTEM: "SYSTEM",
@@ -77,6 +79,7 @@
     elements.adminModeBannerBody = document.getElementById("adminModeBannerBody");
     elements.adminCreateForm = document.getElementById("adminCreateForm");
     elements.adminCreateTitle = document.getElementById("adminCreateTitle");
+    elements.adminCreateBtn = document.getElementById("adminCreateBtn");
     elements.adminListsEmpty = document.getElementById("adminListsEmpty");
     elements.adminListsContainer = document.getElementById("adminListsContainer");
 
@@ -152,6 +155,7 @@
     elements.adminListsBackBtn.addEventListener("click", () => navigate({ name: "role" }));
     elements.adminSyncBtn.addEventListener("click", onAdminSyncClicked);
     elements.adminCreateForm.addEventListener("submit", onAdminCreateSubmit);
+    elements.adminCreateBtn.addEventListener("click", onAdminCreateSubmit);
     elements.adminListsContainer.addEventListener("click", onAdminListsContainerClick);
 
     elements.adminChecklistBackBtn.addEventListener("click", () => navigateToAdminListsFromChecklist());
@@ -414,7 +418,11 @@
   function onAdminCreateSubmit(event) {
     event.preventDefault();
     const title = elements.adminCreateTitle.value;
-    createChecklist(title);
+    const created = createChecklist(title);
+    if (!created) {
+      showToast("Введите название списка.");
+      return;
+    }
     elements.adminCreateTitle.value = "";
     renderCurrentRoute();
   }
@@ -722,7 +730,7 @@
 
   function createChecklist(title) {
     const normalizedTitle = String(title || "").trim();
-    if (normalizedTitle === "") return;
+    if (normalizedTitle === "") return false;
 
     state.checklists.push({
       id: nextChecklistId(),
@@ -734,6 +742,7 @@
       progress: {},
     });
     saveState();
+    return true;
   }
 
   function renameChecklist(checklistId, title) {
@@ -1200,7 +1209,7 @@
       settings: {
         themeMode: THEME_MODES.SYSTEM,
         checklistMode: CHECKLIST_MODES.HIDE_ON_TAP,
-        serverBaseUrl: "https://example.com/api/",
+        serverBaseUrl: DEFAULT_SERVER_BASE_URL,
         readToken: "",
         writeToken: "",
       },
@@ -1223,7 +1232,10 @@
     try {
       sanitized.settings.serverBaseUrl = normalizeBaseUrl(rawSettings.serverBaseUrl);
     } catch (error) {
-      sanitized.settings.serverBaseUrl = "https://example.com/api/";
+      sanitized.settings.serverBaseUrl = DEFAULT_SERVER_BASE_URL;
+    }
+    if (sanitized.settings.serverBaseUrl === LEGACY_SERVER_BASE_URL) {
+      sanitized.settings.serverBaseUrl = DEFAULT_SERVER_BASE_URL;
     }
     sanitized.settings.readToken = normalizeToken(rawSettings.readToken);
     sanitized.settings.writeToken = normalizeToken(rawSettings.writeToken);
