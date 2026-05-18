@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = "store_checklist_pwa_state_v1";
   const TOAST_DURATION_MS = 5200;
-  const DEFAULT_SERVER_BASE_URL = "https://store-checklist-api.onrender.com/api/";
+  const DEFAULT_SERVER_BASE_URL = "https://store-checklist-api.your-subdomain.workers.dev/api/";
   const LEGACY_SERVER_BASE_URL = "https://example.com/api/";
 
   const THEME_MODES = {

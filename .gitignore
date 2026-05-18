@@ -7,3 +7,5 @@
 **/build/
 captures/
 *.iml
+cloudflare_worker/.wrangler/
+cloudflare_worker/.dev.vars

@@ -1,0 +1,16 @@
+name = "store-checklist-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-17"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[secrets]
+required = ["CHECKLIST_READ_TOKEN", "CHECKLIST_WRITE_TOKEN"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "store-checklist-db"
+database_id = "c5b9e7c6-8045-47aa-8353-2da8d130c8fd"
+migrations_dir = "migrations"

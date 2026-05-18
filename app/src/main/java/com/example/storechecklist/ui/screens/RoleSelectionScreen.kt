@@ -339,7 +339,7 @@ private fun MainSettingsSheet(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("Server URL") },
-                    supportingText = { Text("Например: https://store-checklist-api.onrender.com/api/") },
+                    supportingText = { Text("Например: https://store-checklist-api.your-subdomain.workers.dev/api/") },
                 )
                 OutlinedTextField(
                     value = readToken,

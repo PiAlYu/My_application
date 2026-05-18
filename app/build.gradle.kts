@@ -9,7 +9,7 @@ fun String.asBuildConfigString(): String {
 }
 
 val defaultServerBaseUrl = providers.gradleProperty("storeChecklistServerBaseUrl")
-    .orElse("https://example.com/api/")
+    .orElse("https://store-checklist-api.your-subdomain.workers.dev/api/")
 val defaultServerReadToken = providers.gradleProperty("storeChecklistServerReadToken")
     .orElse("")
 val defaultServerWriteToken = providers.gradleProperty("storeChecklistServerWriteToken")
